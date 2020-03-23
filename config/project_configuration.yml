@@ -1,0 +1,37 @@
+---
+spreadsheet_url: "https://docs.google.com/spreadsheets/d/1eTA6yzwdLqvy_yByVCmcJeepSYVXB8oiF5Yz3ktATcE/edit"
+sheetname: "crisisdata"
+enddays: 183
+crisisdata:
+  "Ebola 2014":
+    id: 1
+    startdate: "2014-08-08"
+    countries:
+    - "Sierra Leone"
+    - "Guinea"
+    - "Liberia"
+  "Nepal Earthquake 2015":
+    id: 2
+    startdate: "2015-04-25"
+    countries:
+    - "Nepal"
+  "Cyclone Idai":
+    id: 3
+    startdate: "2019-03-14"
+    countries:
+    - "Mozambique"
+  "DRC Ebola 2018":
+    id: 4
+    startdate: "2019-07-17"
+    countries:
+    - "DRC"
+  Yemen:
+    id: 5
+    startdate: "2015-07-01"
+    countries:
+    - "Yemen"
+  "Rohingya - Cox's Bazaar":
+    id: 6
+    startdate: "2017-09-01"
+    countries:
+    - "Bangladesh"

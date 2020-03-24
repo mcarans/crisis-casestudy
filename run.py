@@ -14,20 +14,35 @@ from os.path import join
 import pygsheets
 from google.oauth2 import service_account
 from hdx.data.dataset import Dataset
+from hdx.data.user import User
 from hdx.facades.simple import facade
 from hdx.hdx_configuration import Configuration
 from hdx.location.country import Country
 from hdx.utilities.dateparse import parse_date
 
+from activity import Activity
+
 logger = logging.getLogger(__name__)
+
+
+def get_user_name(user):
+    user_name = user.get('display_name')
+    if not user_name:
+        user_name = user['fullname']
+        if not user_name:
+            user_name = user['name']
+    return user_name
 
 
 def main():
     configuration = Configuration.read()
     enddays = configuration['enddays']
+    ignore_users = configuration['ignore_users']
+    users_scrapers = configuration['users_scrapers']
     spreadsheet_url = configuration['spreadsheet_url']
     sheetname = configuration['sheetname']
     logger.info('> GSheet Credentials: %s' % gsheet_auth)
+    users = dict()
     info = json.loads(gsheet_auth)
     scopes = ['https://www.googleapis.com/auth/spreadsheets']
     credentials = service_account.Credentials.from_service_account_info(info, scopes=scopes)
@@ -41,25 +56,69 @@ def main():
         data = crisisdata[crisis]
         startdate = parse_date(data['startdate'])
         enddate = startdate + timedelta(days=enddays)
-        startdatestr = '%sZ' % startdate.isoformat()
-        enddatestr = '%sZ' % enddate.isoformat()
         iso3s = list()
         for country in data['countries']:
             iso3, _ = Country.get_iso3_country_code_fuzzy(country)
             iso3s.append('groups:%s' % iso3.lower())
-        search_string = '%s' % (startdatestr, enddatestr, ' OR '.join(iso3s))
+        search_string = 'metadata_created:[2000-01-01T00:00:00.000Z TO %sZ] AND (%s)' % (enddate.isoformat(), ' OR '.join(iso3s))
         datasets = Dataset.search_in_hdx(fq=search_string)
-        row = {'ID': data['id'], 'Crisis name': crisis, 'new or updated': 'new'}
+        row = {'ID': data['id'], 'Crisis name': crisis}
+        count = 0
+        largest_activities = 0
         for dataset in datasets:
+            metadata_created_str = dataset['metadata_created']
+            orgname = dataset['organization']['name']
+            metadata_created = parse_date(metadata_created_str)
+            new_or_updated = 'new'
+            updated_when = ''
+            updated_by = ''
+            if metadata_created < startdate:
+                activities = Activity.get_all_activities(id=dataset['id'], limit=10000)
+                activities_len = len(activities)
+                if activities_len > largest_activities:
+                    largest_activities = activities_len
+                found = False
+                for activity in activities:
+                    timestamp = activity['timestamp']
+                    activity_date = parse_date(timestamp)
+                    if startdate < activity_date < enddate:
+                        new_or_updated = 'updated'
+                        updated_when = timestamp
+                        user_id = activity['user_id']
+                        check_ignore = True
+                        for user_scrapers in users_scrapers:
+                            if user_id == user_scrapers['id']:
+                                if orgname in user_scrapers['scrapers']:
+                                    check_ignore = False
+                                    break
+                        if check_ignore:
+                            if user_id in ignore_users:
+                                continue
+                        username = users.get(user_id)
+                        if username is None:
+                            user = User.read_from_hdx(user_id)
+                            username = get_user_name(user)
+                            users[user_id] = username
+                        updated_by = username
+                        found = True
+                        break
+                if not found:
+                    continue
             row['dataset title'] = dataset['title']
             row['dataset id'] = dataset['id']
             row['dataset url'] = dataset.get_hdx_url()
-            row['org name'] = dataset['organization']['name']
+            row['org name'] = orgname
             row['org id'] = dataset['organization']['id']
+            row['created'] = metadata_created_str
+            row['new or updated'] = new_or_updated
+            row['updated when'] = updated_when
+            row['updated by'] = updated_by
             rows.append([row.get(key, '') for key in keys])
-        logger.info('%s: %d\t%s' % (crisis, len(datasets), search_string))
+            count += 1
+        logger.info('%s: %d\t%s' % (crisis, count, search_string))
     sheet.clear()
     sheet.update_values('A1', rows)
+    logger.info('Longest activities: %d' % largest_activities)
 
 
 if __name__ == '__main__':

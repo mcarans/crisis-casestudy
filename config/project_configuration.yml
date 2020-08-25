@@ -1,6 +1,9 @@
 ---
-spreadsheet_url: "https://docs.google.com/spreadsheets/d/1eTA6yzwdLqvy_yByVCmcJeepSYVXB8oiF5Yz3ktATcE/edit"
-sheetname: "crisisdata"
+# old drive
+#spreadsheet_url: "https://docs.google.com/spreadsheets/d/1eTA6yzwdLqvy_yByVCmcJeepSYVXB8oiF5Yz3ktATcE/edit"
+# new drive
+spreadsheet_url: "https://docs.google.com/spreadsheets/d/13mOHBymmKstkx34SndAkRfnFMQYfmN-ZUk2-uz_FXpE/edit"
+sheetname: "fromhdxstart"
 enddays: 183
 crisisdata:
   "Ebola 2014":
@@ -35,6 +38,16 @@ crisisdata:
     startdate: "2017-09-01"
     countries:
     - "Bangladesh"
+  Covid:
+    id: 7
+    startdate: "2020-01-01"
+    tags:
+      - "covid-19"
+  "El Nino":
+    id: 8
+    startdate: "2015-12-01"
+    tags:
+      - "el nino"
 users_scrapers:
 # hdx-amadou
   - id: "a410b53c-3466-4517-a7d7-bedd76aa258b"

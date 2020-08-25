@@ -56,11 +56,13 @@ def main():
         data = crisisdata[crisis]
         startdate = parse_date(data['startdate'])
         enddate = startdate + timedelta(days=enddays)
-        iso3s = list()
-        for country in data['countries']:
+        searchlist = list()
+        for country in data.get('countries', list()):
             iso3, _ = Country.get_iso3_country_code_fuzzy(country)
-            iso3s.append('groups:%s' % iso3.lower())
-        search_string = 'metadata_created:[2000-01-01T00:00:00.000Z TO %sZ] AND (%s)' % (enddate.isoformat(), ' OR '.join(iso3s))
+            searchlist.append('groups:%s' % iso3.lower())
+        for tag in data.get('tags', list()):
+            searchlist.append('vocab_Topics:"%s"' % tag.lower())
+        search_string = 'metadata_created:[2000-01-01T00:00:00.000Z TO %sZ] AND (%s)' % (enddate.isoformat(), ' OR '.join(searchlist))
         datasets = Dataset.search_in_hdx(fq=search_string)
         row = {'ID': data['id'], 'Crisis name': crisis}
         count = 0
@@ -72,38 +74,38 @@ def main():
             new_or_updated = 'new'
             updated_when = ''
             updated_by = ''
-            if metadata_created < startdate:
-                activities = Activity.get_all_activities(id=dataset['id'], limit=10000)
-                activities_len = len(activities)
-                if activities_len > largest_activities:
-                    largest_activities = activities_len
-                found = False
-                for activity in activities:
-                    timestamp = activity['timestamp']
-                    activity_date = parse_date(timestamp)
-                    if startdate < activity_date < enddate:
-                        new_or_updated = 'updated'
-                        updated_when = timestamp
-                        user_id = activity['user_id']
-                        check_ignore = True
-                        for user_scrapers in users_scrapers:
-                            if user_id == user_scrapers['id']:
-                                if orgname in user_scrapers['scrapers']:
-                                    check_ignore = False
-                                    break
-                        if check_ignore:
-                            if user_id in ignore_users:
-                                continue
-                        username = users.get(user_id)
-                        if username is None:
-                            user = User.read_from_hdx(user_id)
-                            username = get_user_name(user)
-                            users[user_id] = username
-                        updated_by = username
-                        found = True
-                        break
-                if not found:
-                    continue
+            # if metadata_created < startdate:
+            #     activities = Activity.get_all_activities(id=dataset['id'], limit=10000)
+            #     activities_len = len(activities)
+            #     if activities_len > largest_activities:
+            #         largest_activities = activities_len
+            #     found = False
+            #     for activity in activities:
+            #         timestamp = activity['timestamp']
+            #         activity_date = parse_date(timestamp)
+            #         if startdate < activity_date < enddate:
+            #             new_or_updated = 'updated'
+            #             updated_when = timestamp
+            #             user_id = activity['user_id']
+            #             check_ignore = True
+            #             for user_scrapers in users_scrapers:
+            #                 if user_id == user_scrapers['id']:
+            #                     if orgname in user_scrapers['scrapers']:
+            #                         check_ignore = False
+            #                         break
+            #             if check_ignore:
+            #                 if user_id in ignore_users:
+            #                     continue
+            #             username = users.get(user_id)
+            #             if username is None:
+            #                 user = User.read_from_hdx(user_id)
+            #                 username = get_user_name(user)
+            #                 users[user_id] = username
+            #             updated_by = username
+            #             found = True
+            #             break
+            #     if not found:
+            #         continue
             row['dataset title'] = dataset['title']
             row['dataset id'] = dataset['id']
             row['dataset url'] = dataset.get_hdx_url()
